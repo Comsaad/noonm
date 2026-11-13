@@ -396,7 +396,8 @@
             <input type="text" id="studentNameInput" placeholder="اكتبي اسمك الثلاثي هنا...">
             <button class="btn" onclick="startPlatform()">دخول المنصة 🚀</button>
             <div style="margin-top: 20px;">
-                <button class="btn btn-teacher" style="font-size: 0.9rem; padding: 8px 16px;" onclick="openTeacherLogin()">🔐 لوحة متابعة المعلمة</button>
+                <!-- زر سري مخفي أو غير بارز للطالبات، لا يفتح إلا بالرمز -->
+                <button class="btn btn-teacher" style="font-size: 0.85rem; padding: 6px 14px; opacity: 0.85;" onclick="openTeacherLogin()">🔐 لوحة متابعة المعلمة</button>
             </div>
         </div>
 
@@ -484,20 +485,20 @@
 
     </div>
 
-    <!-- نافذة تسجيل دخول المعلمة (تم إخفاء الرمز السري) -->
+    <!-- نافذة طلب الرمز السري لدخول المعلمة -->
     <div id="teacherLoginModal" class="modal-overlay hidden">
         <div class="modal-content">
             <h3 style="color: #d97706; margin-top:0;">🔐 دخول لوحة متابعة المعلمة</h3>
-            <p>الرجاء إدخال الرمز السري للدخول:</p>
-            <input type="password" id="teacherPinInput" placeholder="أدخلي الرمز السري (مثال: 1234)" maxlength="6">
+            <p>هذه اللوحة خاصة بمعلمة المادة (منيرة السعيدان). الرجاء إدخال الرمز السري المعتمد:</p>
+            <input type="password" id="teacherPinInput" placeholder="أدخلي الرمز السري..." maxlength="8" onkeydown="if(event.key === 'Enter') verifyTeacherPin()">
             <div style="display: flex; gap: 10px; justify-content: center; margin-top: 15px;">
-                <button class="btn btn-teacher" onclick="verifyTeacherPin()">دخول</button>
+                <button class="btn btn-teacher" onclick="verifyTeacherPin()">تحقق ودخول</button>
                 <button class="btn btn-danger" onclick="closeTeacherLogin()">إلغاء</button>
             </div>
         </div>
     </div>
 
-    <!-- لوحة متابعة المعلمة -->
+    <!-- لوحة متابعة المعلمة (آمنة تماماً ولا تفتح إلا عبر الرمز) -->
     <div id="teacherDashboardModal" class="modal-overlay hidden">
         <div class="modal-content" style="max-width: 750px; text-align: right;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; margin-bottom: 15px;">
@@ -573,6 +574,9 @@
     </footer>
 
     <script>
+        /* إعدادات الرمز السري للمعلمة (يمكنك تغييره هنا إلى أي رقم سري ترغبين به) */
+        const TEACHER_SECRET_PIN = "1446"; // رمز الدخول الخاص بالمعلمة
+
         /* إعدادات Firebase (اختياري) */
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
@@ -684,7 +688,7 @@
         let points = 0;
         let currentUnit = 1;
         let completedUnits = { 1: false, 2: false, 3: false, 4: false };
-        let answeredQuestions = {}; // تتبع الأسئلة المجاب عليها لمنع تكرار النقاط
+        let answeredQuestions = {}; 
         let studentsDatabase = JSON.parse(localStorage.getItem("studentsDatabase_no_dummy")) || {};
 
         function startPlatform() {
@@ -697,7 +701,7 @@
             document.getElementById("displayName").innerText = studentName;
             
             if(!studentsDatabase[studentName]) {
-                studentsDatabase[studentName] = { points: 0, progress: 0, completedUnits: { 1: false, 2: false, 3: false, 4: false } };
+                studentsDatabase[studentName] = { points: 0, progress: 0, completedUnits: { 1: false, 2: false, 3: false, 4: false }, answeredQuestions: {} };
             }
             
             points = studentsDatabase[studentName].points || 0;
@@ -724,7 +728,6 @@
         }
 
         function selectUnit(unitNum) {
-            // التحقق من أن الوحدة متاح فتحها (الوحدة 1 متاحة، الباقي يشترط إنهاء ما قبلها)
             if (unitNum > 1 && !completedUnits[unitNum - 1] && points < (unitNum - 1) * 20) {
                 alert("عذراً، يجب إتمام الأنشطة وإحراز النقاط المطلوبة في الوحدة السابقة لفتح هذه الوحدة.");
                 return;
@@ -736,7 +739,6 @@
         }
 
         function updateUnitLocks() {
-            // فتح الوحدات تدريجياً بناءً على النقاط أو الإنجاز
             for (let i = 2; i <= 4; i++) {
                 const btn = document.getElementById(`unitBtn${i}`);
                 if (completedUnits[i - 1] || points >= (i - 1) * 20) {
@@ -755,232 +757,212 @@
             document.getElementById("unitTitle").innerText = unit.title;
             
             // الفيديوهات
-            let videosHtml = "";
+            const videosGrid = document.getElementById("videosGrid");
+            videosGrid.innerHTML = "";
             unit.videos.forEach(v => {
-                videosHtml += `
+                videosGrid.innerHTML += `
                     <div class="item-card">
                         <div class="video-container">
-                            <iframe src="${v.url}" allowfullscreen title="${v.title}"></iframe>
+                            <iframe src="${v.url}" allowfullscreen></iframe>
                         </div>
-                        <h4 style="margin: 8px 0 4px 0; color:#1e293b;">${v.title}</h4>
-                        <span style="font-size:0.85rem; color:#059669; font-weight:bold;">منهج المهارات الرقمية - الصف الأول المتوسط</span>
+                        <h4 style="margin: 5px 0 0 0; font-size: 1rem; color:#1e293b;">${v.title}</h4>
                     </div>
                 `;
             });
-            document.getElementById("videosGrid").innerHTML = videosHtml;
 
-            // الأنشطة والأسئلة
-            let activitiesHtml = "";
+            // الأنشطة
+            const activitiesContainer = document.getElementById("activitiesContainer");
+            activitiesContainer.innerHTML = "";
             unit.activities.forEach((act, index) => {
-                const qKey = `${unitNum}_${index}`;
-                const isAlreadyCorrect = answeredQuestions[qKey] === true;
-
-                if(act.type === "mcq") {
+                const qKey = `u${unitNum}_q${index}`;
+                const isAnswered = answeredQuestions[qKey];
+                
+                if (act.type === "mcq") {
                     let optionsHtml = "";
-                    act.options.forEach((opt, oIdx) => {
-                        optionsHtml += `<label style="display:block; margin:6px 0; cursor:pointer;"><input type="radio" name="q_${qKey}" value="${oIdx}" ${isAlreadyCorrect ? 'disabled' : ''}> ${opt}</label>`;
+                    act.options.forEach((opt, oIndex) => {
+                        optionsHtml += `
+                            <label style="display:block; margin: 8px 0; cursor:pointer;">
+                                <input type="radio" name="${qKey}" value="${oIndex}" ${isAnswered ? 'disabled' : ''}> ${opt}
+                            </label>
+                        `;
                     });
-                    activitiesHtml += `
-                        <div class="question-box">
-                            <p style="margin-top:0;"><strong>سؤال ${index + 1}:</strong> ${act.question}</p>
+                    activitiesContainer.innerHTML += `
+                        <div class="question-box" id="box_${qKey}">
+                            <p style="font-weight:bold; margin-top:0;">السؤال ${index+1}: ${act.question}</p>
                             ${optionsHtml}
-                            <button class="btn" id="btn_q_${qKey}" style="padding:6px 14px; font-size:0.9rem; margin-top:8px;" onclick="checkMCQ(${unitNum}, ${index}, ${act.correct}, ${act.points})" ${isAlreadyCorrect ? 'disabled' : ''}>${isAlreadyCorrect ? 'تمت الإجابة بنجاح ✓' : 'تحقق من الإجابة'}</button>
-                            <div id="feedback_${qKey}" class="feedback">${isAlreadyCorrect ? "<span class='correct'>إجابة صحيحة مسبقاً 🌟</span>" : ""}</div>
+                            <button class="btn" style="padding: 6px 14px; font-size: 0.85rem; margin-top: 8px;" onclick="checkMCQ(${unitNum}, ${index}, ${act.correct}, ${act.points})" ${isAnswered ? 'disabled' : ''}>تحقق من الإجابة</button>
+                            <div class="feedback" id="feedback_${qKey}">${isAnswered ? '<span class="correct">تم الإجابة مسبقاً ✓</span>' : ''}</div>
                         </div>
                     `;
-                } else if(act.type === "truefalse") {
-                    activitiesHtml += `
-                        <div class="question-box">
-                            <p style="margin-top:0;"><strong>سؤال ${index + 1}:</strong> ${act.question}</p>
-                            <label style="margin-left: 20px; cursor:pointer;"><input type="radio" name="tf_${qKey}" value="true" ${isAlreadyCorrect ? 'disabled' : ''}> صحيح</label>
-                            <label style="cursor:pointer;"><input type="radio" name="tf_${qKey}" value="false" ${isAlreadyCorrect ? 'disabled' : ''}> خطأ</label>
+                } else if (act.type === "truefalse") {
+                    activitiesContainer.innerHTML += `
+                        <div class="question-box" id="box_${qKey}">
+                            <p style="font-weight:bold; margin-top:0;">السؤال ${index+1}: ${act.question}</p>
+                            <label style="margin-left: 20px; cursor:pointer;"><input type="radio" name="${qKey}" value="true" ${isAnswered ? 'disabled' : ''}> صح</label>
+                            <label style="cursor:pointer;"><input type="radio" name="${qKey}" value="false" ${isAnswered ? 'disabled' : ''}> خطأ</label>
                             <br>
-                            <button class="btn" id="btn_tf_${qKey}" style="padding:6px 14px; font-size:0.9rem; margin-top:10px;" onclick="checkTF(${unitNum}, ${index}, ${act.correct}, ${act.points})" ${isAlreadyCorrect ? 'disabled' : ''}>${isAlreadyCorrect ? 'تمت الإجابة بنجاح ✓' : 'تحقق من الإجابة'}</button>
-                            <div id="feedback_tf_${qKey}" class="feedback">${isAlreadyCorrect ? "<span class='correct'>إجابة صحيحة مسبقاً 🌟</span>" : ""}</div>
+                            <button class="btn" style="padding: 6px 14px; font-size: 0.85rem; margin-top: 10px;" onclick="checkTrueFalse(${unitNum}, ${index}, ${act.correct}, ${act.points})" ${isAnswered ? 'disabled' : ''}>تحقق من الإجابة</button>
+                            <div class="feedback" id="feedback_${qKey}">${isAnswered ? '<span class="correct">تم الإجابة مسبقاً ✓</span>' : ''}</div>
                         </div>
                     `;
                 }
             });
-            document.getElementById("activitiesContainer").innerHTML = activitiesHtml;
 
-            // البطاقات
-            let flashHtml = "";
-            unit.flashcards.forEach(f => {
-                flashHtml += `
-                    <div class="question-box" style="background:#f0fdf4; border-color:#10b981;">
-                        <p style="color:#047857; margin-top:0;"><strong>السؤال:</strong> ${f.q}</p>
-                        <p style="color:#1e293b; margin-bottom:0;"><strong>الإجابة:</strong> ${f.a}</p>
+            // البطاقات السريعة
+            const flashcardsContainer = document.getElementById("flashcardsContainer");
+            flashcardsContainer.innerHTML = "";
+            unit.flashcards.forEach(fc => {
+                flashcardsContainer.innerHTML += `
+                    <div class="question-box" style="background: #eff6ff; border-color: #bfdbfe;">
+                        <p style="color: #1e40af; font-weight: bold; margin-top:0;">💡 ${fc.q}</p>
+                        <p style="color: #334155; margin-bottom: 0;"><strong>الإجابة والتأمل:</strong> ${fc.a}</p>
                     </div>
                 `;
             });
-            document.getElementById("flashcardsContainer").innerHTML = flashHtml;
         }
 
-        function switchSubTab(tabName, evt) {
-            document.querySelectorAll('.sub-tab-btn').forEach(btn => btn.classList.remove('active'));
-            if(evt && evt.target) evt.target.classList.add('active');
-
-            document.getElementById("subTabVideos").classList.add('hidden');
-            document.getElementById("subTabActivities").classList.add('hidden');
-            document.getElementById("subTabFlashcards").classList.add('hidden');
-
-            if(tabName === 'videos') document.getElementById("subTabVideos").classList.remove('hidden');
-            if(tabName === 'activities') document.getElementById("subTabActivities").classList.remove('hidden');
-            if(tabName === 'flashcards') document.getElementById("subTabFlashcards").classList.remove('hidden');
-        }
-
-        function checkMCQ(uNum, qIndex, correctIdx, pts) {
-            const qKey = `${uNum}_${qIndex}`;
-            if(answeredQuestions[qKey]) return; // منع التكرار
-
-            const selected = document.querySelector(`input[name="q_${qKey}"]:checked`);
-            const feedbackEl = document.getElementById(`feedback_${qKey}`);
-            
-            if(!selected) {
-                feedbackEl.innerHTML = "<span class='incorrect'>الرجاء اختيار إجابة أولاً!</span>";
+        function checkMCQ(unitNum, qIndex, correctOpt, actPoints) {
+            const qKey = `u${unitNum}_q${qIndex}`;
+            const radios = document.getElementsByName(qKey);
+            let selected = -1;
+            for(let i=0; i<radios.length; i++) {
+                if(radios[i].checked) { selected = i; break; }
+            }
+            if(selected === -1) {
+                alert("الرجاء اختيار إجابة أولاً!");
                 return;
             }
 
-            if(parseInt(selected.value) === correctIdx) {
-                answeredQuestions[qKey] = true; // تسجيل الاجابة كصحيحة لمنع تكرارها
-                feedbackEl.innerHTML = "<span class='correct'>إجابة صحيحة! أحسنتِ التألق 🌟</span>";
-                
-                // تعطيل الزر وخيارات الإجابة لهذا السؤال حصراً
-                document.getElementById(`btn_q_${qKey}`).innerText = "تمت الإجابة بنجاح ✓";
-                document.getElementById(`btn_q_${qKey}`).setAttribute("disabled", "true");
-                document.querySelectorAll(`input[name="q_${qKey}"]`).forEach(inp => inp.setAttribute("disabled", "true"));
-
-                addPoints(pts);
+            const feedbackDiv = document.getElementById(`feedback_${qKey}`);
+            if(selected === correctOpt) {
+                feedbackDiv.innerHTML = `<span class="correct">إجابة صحيحة وصوفية ممتازة! أحسنتِ (+${actPoints} نقاط) 🌟</span>`;
+                addPoints(actPoints);
+                answeredQuestions[qKey] = true;
+                lockQuestion(qKey);
             } else {
-                feedbackEl.innerHTML = "<span class='incorrect'>إجابة خاطئة، تأملي الفيديو واقرئي المعلومة مرة أخرى.</span>";
+                feedbackDiv.innerHTML = `<span class="incorrect">إجابة غير دقيقة، حاولي مرة أخرى بدقة 💡</span>`;
             }
+            saveStudentDataToStorage();
         }
 
-        function checkTF(uNum, qIndex, correctVal, pts) {
-            const qKey = `${uNum}_${qIndex}`;
-            if(answeredQuestions[qKey]) return; // منع التكرار
-
-            const selected = document.querySelector(`input[name="tf_${qKey}"]:checked`);
-            const feedbackEl = document.getElementById(`feedback_tf_${qKey}`);
-            
-            if(!selected) {
-                feedbackEl.innerHTML = "<span class='incorrect'>الرجاء اختيار إجابة أولاً!</span>";
+        function checkTrueFalse(unitNum, qIndex, correctVal, actPoints) {
+            const qKey = `u${unitNum}_q${qIndex}`;
+            const radios = document.getElementsByName(qKey);
+            let selectedVal = null;
+            for(let i=0; i<radios.length; i++) {
+                if(radios[i].checked) { selectedVal = (radios[i].value === "true"); break; }
+            }
+            if(selectedVal === null) {
+                alert("الرجاء اختيار 'صح' أو 'خطأ' أولاً!");
                 return;
             }
 
-            const userVal = (selected.value === "true");
-            if(userVal === correctVal) {
-                answeredQuestions[qKey] = true; // تسجيل الاجابة كصحيحة لمنع تكرارها
-                feedbackEl.innerHTML = "<span class='correct'>إجابة صحيحة! بارك الله في إبداعك 🌟</span>";
-                
-                // تعطيل الزر وخيارات الإجابة
-                document.getElementById(`btn_tf_${qKey}`).innerText = "تمت الإجابة بنجاح ✓";
-                document.getElementById(`btn_tf_${qKey}`).setAttribute("disabled", "true");
-                document.querySelectorAll(`input[name="tf_${qKey}"]`).forEach(inp => inp.setAttribute("disabled", "true"));
-
-                addPoints(pts);
+            const feedbackDiv = document.getElementById(`feedback_${qKey}`);
+            if(selectedVal === correctVal) {
+                feedbackDiv.innerHTML = `<span class="correct">إجابة صحيحة وموفقة! أحسنتِ (+${actPoints} نقاط) 🌟</span>`;
+                addPoints(actPoints);
+                answeredQuestions[qKey] = true;
+                lockQuestion(qKey);
             } else {
-                feedbackEl.innerHTML = "<span class='incorrect'>إجابة خاطئة، تأملي الفيديو واقرئي المعلومة مرة أخرى.</span>";
+                feedbackDiv.innerHTML = `<span class="incorrect">إجابة غير دقيقة، حاولي مرة أخرى بدقة 💡</span>`;
             }
+            saveStudentDataToStorage();
         }
 
-        function addPoints(pts) {
-            points += pts;
-            if(!studentsDatabase[studentName]) studentsDatabase[studentName] = {};
-            
-            studentsDatabase[studentName].points = points;
-            studentsDatabase[studentName].answeredQuestions = answeredQuestions;
-            
-            // حساب التقدم وإلغاء قفل الوحدات
-            let currentProg = Math.min(100, Math.round((points / 60) * 100));
-            studentsDatabase[studentName].progress = currentProg;
+        function lockQuestion(qKey) {
+            const radios = document.getElementsByName(qKey);
+            for(let i=0; i<radios.length; i++) radios[i].disabled = true;
+        }
 
-            if (points >= 20) completedUnits[1] = true;
-            if (points >= 40) completedUnits[2] = true;
-            if (points >= 50) completedUnits[3] = true;
-            if (points >= 60) completedUnits[4] = true;
-
-            studentsDatabase[studentName].completedUnits = completedUnits;
-
-            saveData();
+        function addPoints(val) {
+            points += val;
             updatePointsDisplay();
             updateProgressBar();
             updateUnitLocks();
-            updateLeaderboard();
-
-            if(typeof confetti === "function") {
-                confetti({ particleCount: 70, spread: 70, origin: { y: 0.6 } });
-            }
+            checkCompletionAndTriggerConfetti();
         }
 
         function updatePointsDisplay() {
             document.getElementById("totalPoints").innerText = points;
-            const certBtn = document.getElementById("certBtn");
-            if(points >= 40 && certBtn) {
-                certBtn.removeAttribute("disabled");
-            }
         }
 
         function updateProgressBar() {
-            let prog = studentsDatabase[studentName] ? (studentsDatabase[studentName].progress || 0) : 0;
-            document.getElementById("progressBarFill").style.width = prog + "%";
-            document.getElementById("progressPercentText").innerText = prog + "%";
+            // الحد الأقصى الافتراضي للنقاط 80 نقطة
+            let percent = Math.min(100, Math.round((points / 80) * 100));
+            document.getElementById("progressPercentText").innerText = percent + "%";
+            document.getElementById("progressBarFill").style.width = percent + "%";
+
+            if (percent >= 100) {
+                document.getElementById("certBtn").disabled = false;
+            }
         }
 
-        function saveData() {
+        function checkCompletionAndTriggerConfetti() {
+            confetti({
+                particleCount: 80,
+                spread: 70,
+                origin: { y: 0.6 }
+            });
+        }
+
+        function saveStudentDataToStorage() {
+            if(!studentName) return;
+            studentsDatabase[studentName] = {
+                points: points,
+                progress: Math.min(100, Math.round((points / 80) * 100)),
+                completedUnits: completedUnits,
+                answeredQuestions: answeredQuestions
+            };
             localStorage.setItem("studentsDatabase_no_dummy", JSON.stringify(studentsDatabase));
-            if(useFirebase && db) {
-                db.collection("students").doc(studentName).set({
-                    points: points,
-                    progress: studentsDatabase[studentName].progress || 0,
-                    completedUnits: completedUnits,
-                    answeredQuestions: answeredQuestions,
-                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-                }).catch(err => console.error("خطأ حفظ Firebase:", err));
-            }
+            updateLeaderboard();
         }
 
         function updateLeaderboard() {
-            const listEl = document.getElementById("leaderboardList");
+            const list = document.getElementById("leaderboardList");
             const entries = Object.entries(studentsDatabase);
-            
             if(entries.length === 0) {
-                listEl.innerHTML = `<li style="justify-content: center; color: #64748b;">لا توجد مشاركات حتى الآن. كوني أول المشاركات! 🌟</li>`;
+                list.innerHTML = `<li style="justify-content: center; color: #64748b;">لا توجد مشاركات حتى الآن. كوني أول المشاركات! 🌟</li>`;
                 return;
             }
 
-            const sortedStudents = entries.sort((a, b) => (b[1].points || 0) - (a[1].points || 0));
-            let html = "";
-            sortedStudents.forEach(([name, data], idx) => {
-                let badge = idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : "🏅";
-                let pts = data.points || 0;
-                html += `<li><span>${badge} ${name}</span> <span style="color: #047857;">${pts} نقطة</span></li>`;
+            entries.sort((a,b) => b[1].points - a[1].points);
+            list.innerHTML = "";
+            entries.forEach(([name, data], idx) => {
+                let medal = idx === 0 ? "🥇" : (idx === 1 ? "🥈" : (idx === 2 ? "🥉" : "⭐"));
+                list.innerHTML += `
+                    <li>
+                        <span>${medal} ${name}</span>
+                        <span style="color: #d97706;">${data.points} نقطة</span>
+                    </li>
+                `;
             });
-            listEl.innerHTML = html;
         }
 
-        // إداريات لوحة المعلمة
+        // ================= امن الصلاحيات ولوحة المعلمة =================
         function openTeacherLogin() {
+            document.getElementById("teacherPinInput").value = "";
             document.getElementById("teacherLoginModal").classList.remove("hidden");
+            document.getElementById("teacherPinInput").focus();
         }
 
         function closeTeacherLogin() {
             document.getElementById("teacherLoginModal").classList.add("hidden");
-            document.getElementById("teacherPinInput").value = "";
         }
 
         function verifyTeacherPin() {
-            const pin = document.getElementById("teacherPinInput").value;
-            if(pin === "1234") {
+            const pin = document.getElementById("teacherPinInput").value.trim();
+            if (pin === TEACHER_SECRET_PIN) {
                 closeTeacherLogin();
                 openTeacherDashboard();
             } else {
-                alert("الرمز السري غير صحيح!");
+                alert("الرمز السري غير صحيح! الوصول مقتصر على معلمة المادة فقط.");
+                document.getElementById("teacherPinInput").value = "";
+                document.getElementById("teacherPinInput").focus();
             }
         }
 
         function openTeacherDashboard() {
-            renderTeacherData(studentsDatabase);
+            refreshTeacherTable();
             document.getElementById("teacherDashboardModal").classList.remove("hidden");
         }
 
@@ -988,91 +970,82 @@
             document.getElementById("teacherDashboardModal").classList.add("hidden");
         }
 
-        function renderTeacherData(dataObj) {
+        function refreshTeacherTable(filterText = "") {
             const tbody = document.getElementById("teacherStudentsTableBody");
-            const entries = Object.entries(dataObj);
+            tbody.innerHTML = "";
+            const entries = Object.entries(studentsDatabase);
             
-            document.getElementById("statCount").innerText = entries.length;
-            let maxP = 0;
-            let totalProg = 0;
-            entries.forEach(([_, d]) => {
-                if((d.points || 0) > maxP) maxP = d.points || 0;
-                totalProg += (d.progress || 0);
-            });
-            document.getElementById("statMaxPoints").innerText = maxP;
-            document.getElementById("statAvgProgress").innerText = entries.length ? Math.round(totalProg / entries.length) + "%" : "0%";
+            let totalStudents = entries.length;
+            let maxPts = 0;
+            let totalProgSum = 0;
 
-            if(entries.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:15px; color:#64748b;">لا توجد مشاركات مسجلة حالياً.</td></tr>`;
+            if (totalStudents === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding: 15px; color:#64748b;">لا توجد سجلات طالبات مسجلات حتى الآن.</td></tr>`;
+                document.getElementById("statCount").innerText = 0;
+                document.getElementById("statMaxPoints").innerText = 0;
+                document.getElementById("statAvgProgress").innerText = "0%";
                 return;
             }
 
-            let html = "";
-            entries.forEach(([name, d]) => {
-                let pts = d.points || 0;
-                let prog = d.progress || 0;
-                let status = pts >= 40 ? "<span style='color:#10b981; font-weight:bold;'>مستحقة 🏆</span>" : "<span style='color:#64748b;'>قيد التفاعل ⏳</span>";
-                html += `
+            let filtered = entries.filter(([name]) => name.includes(filterText));
+
+            filtered.forEach(([name, data]) => {
+                if(data.points > maxPts) maxPts = data.points;
+                totalProgSum += (data.progress || 0);
+
+                tbody.innerHTML += `
                     <tr>
-                        <td style="padding:10px; border-bottom:1px solid #e2e8f0;">${name}</td>
-                        <td style="padding:10px; border-bottom:1px solid #e2e8f0; text-align:center;">${pts}</td>
-                        <td style="padding:10px; border-bottom:1px solid #e2e8f0; text-align:center;">${prog}%</td>
-                        <td style="padding:10px; border-bottom:1px solid #e2e8f0; text-align:center;">${status}</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; font-weight:bold;">${name}</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align:center; color:#d97706; font-weight:bold;">${data.points}</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align:center;">${data.progress || 0}%</td>
+                        <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align:center;">
+                            <span style="background: ${data.progress >= 100 ? '#dcfce7' : '#fef3c7'}; color: ${data.progress >= 100 ? '#166534' : '#b45309'}; padding: 3px 8px; border-radius: 6px; font-size: 0.8rem;">
+                                ${data.progress >= 100 ? 'مكتملة 🏆' : 'نشطة 📚'}
+                            </span>
+                        </td>
                     </tr>
                 `;
             });
-            tbody.innerHTML = html;
+
+            document.getElementById("statCount").innerText = totalStudents;
+            document.getElementById("statMaxPoints").innerText = maxPts;
+            document.getElementById("statAvgProgress").innerText = Math.round(totalProgSum / totalStudents) + "%";
         }
 
         function filterTeacherTable() {
-            const query = document.getElementById("teacherSearchInput").value.trim().toLowerCase();
-            const filtered = {};
-            Object.entries(studentsDatabase).forEach(([name, data]) => {
-                if(name.toLowerCase().includes(query)) {
-                    filtered[name] = data;
-                }
-            });
-            renderTeacherData(filtered);
+            const query = document.getElementById("teacherSearchInput").value.trim();
+            refreshTeacherTable(query);
         }
 
         function exportToCSV() {
-            const entries = Object.entries(studentsDatabase);
-            if(entries.length === 0) {
-                alert("لا توجد بيانات لتصديرها!");
-                return;
-            }
-            let csvContent = "\uFEFFاسم الطالبة,النقاط,نسبة التقدم,الحالة\n";
-            entries.forEach(([name, d]) => {
-                let pts = d.points || 0;
-                let prog = d.progress || 0;
-                let status = pts >= 40 ? "مستحقة للشهادة" : "قيد التقدم";
-                csvContent += `"${name}",${pts},${prog}%,${status}\n`;
+            let csvContent = "\uFEFFاسم الطالبة,النقاط,التقدم\n";
+            Object.entries(studentsDatabase).forEach(([name, data]) => {
+                csvContent += `"${name}",${data.points},"${data.progress || 0}%"\n`;
             });
-
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
-            const link = document.createElement("a");
-            link.setAttribute("href", url);
-            link.setAttribute("download", `تقرير_مشاركات_الطالبات_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "student_performance_report.csv";
+            a.click();
         }
 
         function resetStudentData() {
-            if(confirm("هل أنتِ متأكدة من مسح جميع بيانات ومشاركات الطالبات؟")) {
+            if(confirm("هل أنتِ متأكدة من رغبتك في حذف وإعادة ضبط سجل بيانات الطالبات بالكامل؟")) {
                 studentsDatabase = {};
                 localStorage.removeItem("studentsDatabase_no_dummy");
-                renderTeacherData(studentsDatabase);
+                refreshTeacherTable();
                 updateLeaderboard();
-                alert("تمت إعادة ضبط النظام بنجاح.");
+                alert("تم إعادة ضبط السجل بنجاح.");
             }
         }
 
+        // نافذة الشهادة
         function showCertificateModal() {
             document.getElementById("certStudentName").innerText = studentName;
             document.getElementById("certPoints").innerText = points;
             document.getElementById("certificateModal").classList.remove("hidden");
+            confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
         }
 
         function closeCertificateModal() {
